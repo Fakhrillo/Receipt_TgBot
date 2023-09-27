@@ -17,7 +17,8 @@ bot_token = "6642459129:AAGfTt40wSnX6wJFgcC9iwsPSfOAhWLf_Do"
 bot = telebot.TeleBot(bot_token)
 
 # Your Django API endpoint for checking user availability
-API_URL = 'http://192.168.1.22:8000/api/'
+# API_URL = 'http://192.168.1.22:8000/api/'
+API_URL = 'http://91.196.77.156:8003/api/'
 
 # Define the username and password of Django admin
 username = 'fakha'
