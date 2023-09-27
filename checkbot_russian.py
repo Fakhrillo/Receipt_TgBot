@@ -21,8 +21,8 @@ bot = telebot.TeleBot(bot_token)
 API_URL = 'http://91.196.77.156:8003/api/'
 
 # Define the username and password of Django admin
-username = 'fakha'
-password = '32974556'
+username = 'admin'
+password = '123'
 
 # Initialize a Redis client
 redis_client = redis.StrictRedis(host='localhost', port=6379)
