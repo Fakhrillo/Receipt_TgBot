@@ -386,7 +386,7 @@ def handle_photo(message):
             bot.send_message(user_id, 'Пожалуйста, выберите вариант перед дальнейшей обработкой.')
         # del user_steps[user_id]  # Remove the user's step after processing
     else:
-        bot.send_message(user_id, 'Кажется, вы не зарегистрированы, чтобы проверить, есть ли у вас разрешение, нажмите на 👉 /start .')
+        bot.send_message(user_id, 'Кажется, вы не зарегистрированы, чтобы проверить, есть ли у вас разрешение - нажмите на 👉 /start .')
 
 # Send extracted text with edit and submit buttons
 def send_text_with_buttons(chat_id, extracted_text):
