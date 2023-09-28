@@ -223,7 +223,7 @@ def handle_option(message):
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
 
-    global summa_check, prodaja_check, doc_check, image_file
+    global summa_check, prodaja_check, doc_check, image_file, worker_data
 
     user_id = message.from_user.id
 
