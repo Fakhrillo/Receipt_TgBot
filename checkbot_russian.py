@@ -249,7 +249,7 @@ def handle_photo(message):
     if response.status_code == 200:
             worker_data = response.json()
     else:
-        print(f"Error getting token: {response.status_code}")
+        print(f"User does not exist with this {user_id} ID: {response.status_code}")
 
     if worker_data and user_id == worker_data['id_tg']:
 
