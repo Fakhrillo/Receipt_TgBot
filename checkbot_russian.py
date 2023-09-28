@@ -227,138 +227,166 @@ def handle_photo(message):
 
     user_id = message.from_user.id
 
-    # Retrieve the user's current step from Redis
-    user_step_bytes = redis_client.get(f'user_step:{user_id}')
-    user_step_str = user_step_bytes.decode('utf-8')
-    
-    edited_text_dict[user_id] = {'step': user_step_str}
-    if user_step_str == "send_check_photo":
-        file_id = message.photo[-1].file_id
-        file_info = bot.get_file(file_id)
+    try:
+        headers = {
+            'Authorization': f'Bearer {jwt_access_token}',  # Include the JWT token in the Authorization header
+        }
+        response = requests.get(f'{API_URL}worker/id/{user_id}', headers=headers)
+        if response.status_code == 200:
+            # worker_data = response.json()
+            print("Access token is still usabel!")
+        else:
+            print("Access token is no longer usable! Trying to refresh it...")
+            get_token(username, password)
+    except Exception as e:
+        print(f"Error getting token: {e}")
 
-        # Download and process the image
-        downloaded_file = bot.download_file(file_info.file_path)
-        image_file = downloaded_file
-        # Create an in-memory stream to read the image content
-        image_stream = io.BytesIO(downloaded_file)
-        # Create an Image object with the image content
-        image = vision_v1.Image(content=image_stream.read())
+    headers = {
+            'Authorization': f'Bearer {jwt_access_token}',  # Include the JWT token in the Authorization header
+        }
 
-        response = client.text_detection(image=image)
-        texts = response.text_annotations
+    response = requests.get(f'{API_URL}worker/id/{user_id}', headers=headers)
+    if response.status_code == 200:
+            worker_data = response.json()
+    else:
+        print(f"Error getting token: {response.status_code}")
 
-        if texts:
-            extracted_text = texts[0].description
-            # Split the extracted text into lines
-            lines = extracted_text.split('\n')
-            # Keywords to search for
-            keywords = ["ПРОДАЖА"]
-            prodazha_text = None
-            # Search for keywords in each line
-            prodazha_text = [line for line in lines if any(keyword in line for keyword in keywords)]
+    if user_id == worker_data['tg_id']:
 
-            # Initialize max_x
-            max_x = 0
+        # Retrieve the user's current step from Redis
+        user_step_bytes = redis_client.get(f'user_step:{user_id}')
+        user_step_str = user_step_bytes.decode('utf-8')
+        
+        edited_text_dict[user_id] = {'step': user_step_str}
+        if user_step_str == "send_check_photo":
+            file_id = message.photo[-1].file_id
+            file_info = bot.get_file(file_id)
 
-            # Loop through all detected texts to find the maximum x-coordinate
-            for text in texts:
-                for vertex in text.bounding_poly.vertices:
-                    max_x = max(max_x, vertex.x)
+            # Download and process the image
+            downloaded_file = bot.download_file(file_info.file_path)
+            image_file = downloaded_file
+            # Create an in-memory stream to read the image content
+            image_stream = io.BytesIO(downloaded_file)
+            # Create an Image object with the image content
+            image = vision_v1.Image(content=image_stream.read())
 
-            # Find bounding box of first occurrence of "Сумма" and replace x-values with max_x
-            summa_vertices = None
-            for text in texts:
-                if text.description == "Сумма":
-                    summa_vertices = [(vertex.x, vertex.y) for vertex in text.bounding_poly.vertices]
-                    summa_vertices = [(max_x, vertex[1]) for vertex in summa_vertices]
-                    break
+            response = client.text_detection(image=image)
+            texts = response.text_annotations
 
-            summa_text = None
-            if summa_vertices:
-                # Extract texts within the new bounding box
-                captured_numbers = set()  # using set to avoid duplicates
+            if texts:
+                extracted_text = texts[0].description
+                # Split the extracted text into lines
+                lines = extracted_text.split('\n')
+                # Keywords to search for
+                keywords = ["ПРОДАЖА"]
+                prodazha_text = None
+                # Search for keywords in each line
+                prodazha_text = [line for line in lines if any(keyword in line for keyword in keywords)]
 
-                # Regular expression pattern to find digits in a string
-                pattern = re.compile(r'\d+')
+                # Initialize max_x
+                max_x = 0
 
+                # Loop through all detected texts to find the maximum x-coordinate
                 for text in texts:
                     for vertex in text.bounding_poly.vertices:
-                        x, y = vertex.x, vertex.y
-                        if summa_vertices[0][1] <= y <= summa_vertices[2][1]:
-                            # Extract all digits from the text
-                            match = pattern.findall(text.description)
-                            if match:
-                                # Convert to integer and add to the set
-                                for num_str in match:
-                                    captured_numbers.add(int(num_str))
+                        max_x = max(max_x, vertex.x)
 
-                if captured_numbers:
-                    summa_text = f"Сумма {max(list(captured_numbers))}"
-                    summa_check = True
+                # Find bounding box of first occurrence of "Сумма" and replace x-values with max_x
+                summa_vertices = None
+                for text in texts:
+                    if text.description == "Сумма":
+                        summa_vertices = [(vertex.x, vertex.y) for vertex in text.bounding_poly.vertices]
+                        summa_vertices = [(max_x, vertex[1]) for vertex in summa_vertices]
+                        break
+
+                summa_text = None
+                if summa_vertices:
+                    # Extract texts within the new bounding box
+                    captured_numbers = set()  # using set to avoid duplicates
+
+                    # Regular expression pattern to find digits in a string
+                    pattern = re.compile(r'\d+')
+
+                    for text in texts:
+                        for vertex in text.bounding_poly.vertices:
+                            x, y = vertex.x, vertex.y
+                            if summa_vertices[0][1] <= y <= summa_vertices[2][1]:
+                                # Extract all digits from the text
+                                match = pattern.findall(text.description)
+                                if match:
+                                    # Convert to integer and add to the set
+                                    for num_str in match:
+                                        captured_numbers.add(int(num_str))
+
+                    if captured_numbers:
+                        summa_text = f"Сумма {max(list(captured_numbers))}"
+                        summa_check = True
+                    else:
+                        summa_text = 'Сумма not found'
+                        summa_check = False
+                # Send both "ПРОДАЖА" and "Сумма" together to the user along with edit and submit buttons
+                response_text = ""
+
+                if prodazha_text is not None:
+                    response_text += '\n'.join(prodazha_text) + "\n"
+                    # Search for № sign if it's correct or no
+                    match = re.search('№', response_text)
+                    if not match:
+                        response_text = re.sub(r'ИС|МО', '№0', response_text)
+                        response_text = re.sub(r'О', '0', response_text)
+
+                    prodaja_check = True
+                if summa_text is not None:
+                    response_text += summa_text + "\n"
+
+                if response_text:
+                    send_text_with_buttons(user_id, response_text.strip())
                 else:
-                    summa_text = 'Сумма not found'
-                    summa_check = False
-            # Send both "ПРОДАЖА" and "Сумма" together to the user along with edit and submit buttons
-            response_text = ""
+                    bot.send_message(user_id, 'Соответствующих строк не обнаружено.')
 
-            if prodazha_text is not None:
-                response_text += '\n'.join(prodazha_text) + "\n"
-                # Search for № sign if it's correct or no
-                match = re.search('№', response_text)
-                if not match:
-                    response_text = re.sub(r'ИС|МО', '№0', response_text)
-                    response_text = re.sub(r'О', '0', response_text)
+        elif user_step_str == "send_document_photo":
+            file_id = message.photo[-1].file_id
+            file_info = bot.get_file(file_id)
 
-                prodaja_check = True
-            if summa_text is not None:
-                response_text += summa_text + "\n"
+            downloaded_file = bot.download_file(file_info.file_path)
+            
+            image_file = downloaded_file
+            # Create an in-memory stream to read the image content
+            image_stream = io.BytesIO(downloaded_file)
+            # Create an Image object with the image content
+            image = vision_v1.Image(content=image_stream.read())
+            response = client.text_detection(image=image)
+            texts = response.text_annotations
 
-            if response_text:
-                send_text_with_buttons(user_id, response_text.strip())
+            if texts:
+
+                extracted_text = texts[0].description
+                # Split the extracted text into lines
+                lines = extracted_text.split('\n')
+                # Keywords to search for
+                keywords = ["Перемещение товаров в производство"]
+                prodazha_text = None
+                # Search for keywords in each line
+                prodazha_text = [line for line in lines if any(keyword in line for keyword in keywords)]
+
+                response_text = ""
+                if prodazha_text is not None:
+                    # Extract only the part of the text that follows the keyword
+                    response_text += '\n'.join([line.split(keywords[0])[-1].split('от')[0].strip() for line in prodazha_text]) + "\n"
+
+                if response_text:
+                    doc_check = True
+                    send_text_with_buttons(user_id, response_text.strip())
+                else:
+                    bot.send_message(user_id, 'Соответствующих строк не обнаружено.')
+
             else:
-                bot.send_message(user_id, 'Соответствующих строк не обнаружено.')
-
-    elif user_step_str == "send_document_photo":
-        file_id = message.photo[-1].file_id
-        file_info = bot.get_file(file_id)
-
-        downloaded_file = bot.download_file(file_info.file_path)
-        
-        image_file = downloaded_file
-        # Create an in-memory stream to read the image content
-        image_stream = io.BytesIO(downloaded_file)
-        # Create an Image object with the image content
-        image = vision_v1.Image(content=image_stream.read())
-        response = client.text_detection(image=image)
-        texts = response.text_annotations
-
-        if texts:
-
-            extracted_text = texts[0].description
-            # Split the extracted text into lines
-            lines = extracted_text.split('\n')
-            # Keywords to search for
-            keywords = ["Перемещение товаров в производство"]
-            prodazha_text = None
-            # Search for keywords in each line
-            prodazha_text = [line for line in lines if any(keyword in line for keyword in keywords)]
-
-            response_text = ""
-            if prodazha_text is not None:
-                # Extract only the part of the text that follows the keyword
-                response_text += '\n'.join([line.split(keywords[0])[-1].split('от')[0].strip() for line in prodazha_text]) + "\n"
-
-            if response_text:
-                doc_check = True
-                send_text_with_buttons(user_id, response_text.strip())
-            else:
-                bot.send_message(user_id, 'Соответствующих строк не обнаружено.')
-
+                bot.send_message(user_id, 'Текст в документе не найден.')
         else:
-            bot.send_message(user_id, 'Текст в документе не найден.')
+            bot.send_message(user_id, 'Пожалуйста, выберите вариант перед дальнейшей обработкой.')
+        # del user_steps[user_id]  # Remove the user's step after processing
     else:
-        bot.send_message(user_id, 'Пожалуйста, выберите вариант перед дальнейшей обработкой.')
-    # del user_steps[user_id]  # Remove the user's step after processing
+        bot.send_message(user_id, 'Кажется, вы не зарегистрированы, чтобы проверить, есть ли у вас разрешение, нажмите на 👉 /start .')
 
 # Send extracted text with edit and submit buttons
 def send_text_with_buttons(chat_id, extracted_text):
@@ -440,6 +468,7 @@ def button_callback(call):
         edited_text = edited_text_buttons.get(chat_id)
         user_step_bytes = redis_client.get(f'user_step:{user_id}')
         user_step_str = user_step_bytes.decode('utf-8')
+
         if user_step_str == 'send_check_photo':
             # Search for the patterns in the text
             check_num_1 = re.search(r'№\d+', edited_text)
@@ -456,7 +485,6 @@ def button_callback(call):
                 'branch': int(worker_data['branch']),
             }
             # Saving the data with API
-
             try:
                 headers = {
                     'Authorization': f'Bearer {jwt_access_token}',  # Include the JWT token in the Authorization header
