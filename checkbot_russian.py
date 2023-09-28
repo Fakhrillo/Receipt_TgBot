@@ -251,7 +251,7 @@ def handle_photo(message):
     else:
         print(f"Error getting token: {response.status_code}")
 
-    if worker_data and user_id == worker_data['tg_id']:
+    if worker_data and user_id == worker_data['id_tg']:
 
         # Retrieve the user's current step from Redis
         user_step_bytes = redis_client.get(f'user_step:{user_id}')
