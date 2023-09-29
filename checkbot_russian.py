@@ -7,22 +7,22 @@ import requests
 from eskiz_sms import EskizSMS
 import random
 import redis
+from decouple import config
 
 # Set up the Google Cloud Vision API client
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = r"sustained-axis-396810-1dd4fea38af3.json"
 client = vision_v1.ImageAnnotatorClient()
 
 # Set up the Telebot instance
-bot_token = "6642459129:AAGfTt40wSnX6wJFgcC9iwsPSfOAhWLf_Do"
+bot_token = config('bot_token')
 bot = telebot.TeleBot(bot_token)
 
 # Your Django API endpoint for checking user availability
-# API_URL = 'http://192.168.1.22:8000/api/'
-API_URL = 'http://91.196.77.156:8003/api/'
+API_URL = config('API_URL')
 
 # Define the username and password of Django admin
-username = 'admin'
-password = '123'
+username = config('username')
+password = config('password')
 
 # Initialize a Redis client
 redis_client = redis.StrictRedis(host='localhost', port=6379)
@@ -34,16 +34,12 @@ edited_text_dict = {}
 edited_text_buttons = {}
 user_messages = {}
 worker_data = {}
-img_file = None
 
 prodaja_check = False
 summa_check = False
 doc_check = False
 
 verification_codes = {}
-# Define dictionaries to store user information
-user_names = {}     # Store user names
-user_phones = {}    # Store user phone numbers
 list_of_checks = ['Сканировать чек', 'Сканировать документ']
 
 def get_token(username, password):
@@ -83,8 +79,8 @@ def create_phone_number_button():
     return markup
 
 def send_SMS(user_phone, random_code):
-    email = "avtoritetcarwash@mail.ru"
-    password = "e3FJwZo1DhFfijkrbaZT4UlCuG9AGJIA5PvUhUJS"
+    email = config('email')
+    password = config('password')
     cleaned_number = re.sub(r'\+', '', user_phone)
     eskiz = EskizSMS(email=email, password=password)
     eskiz.send_sms(cleaned_number, f'<#> Your verification code Avtoritet: {random_code}', from_whom='4546', callback_url=None)
