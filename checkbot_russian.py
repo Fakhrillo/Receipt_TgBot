@@ -394,7 +394,8 @@ def send_text_with_buttons(chat_id, extracted_text):
     
     markup = telebot.types.InlineKeyboardMarkup()
     edit_button = telebot.types.InlineKeyboardButton(text="Ресканировать", callback_data="edit")
-    if summa_check  and prodaja_check or doc_check:
+    if summa_check and prodaja_check or doc_check:
+        print(f'FCH: {prodaja_check}, SM: {summa_check}, DCH: {doc_check}')
         submit_button = telebot.types.InlineKeyboardButton(text='Подтвердить', callback_data="submit")
         markup.add(edit_button, submit_button)
     else:
