@@ -323,18 +323,15 @@ def handle_photo(message):
                 # Send both "ПРОДАЖА" and "Сумма" together to the user along with edit and submit buttons
                 response_text = ""
 
-                if prodazha_text is not None:
+                if prodazha_text is not None and prodazha_text:
                     response_text += '\n'.join(prodazha_text) + "\n"
                     # Search for № sign if it's correct or no
                     match = re.search('№', response_text)
-                    print(f'Response Text: {response_text}')
-                    print(f'Prodaja: {prodazha_text}')
-                    print(f'Match: {match}')
                     if not match:
                         response_text = re.sub(r'ИС|МО', '№0', response_text)
                         response_text = re.sub(r'О', '0', response_text)
 
-                        prodaja_check = True
+                    prodaja_check = True
                 if summa_text is not None:
                     response_text += summa_text + "\n"
 
