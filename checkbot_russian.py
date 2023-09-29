@@ -250,6 +250,7 @@ def handle_photo(message):
             worker_data = response.json()
     else:
         print(f"User does not exist with this {user_id} ID: {response.status_code}")
+        worker_data = None
 
     if worker_data and user_id == worker_data['id_tg']:
 
