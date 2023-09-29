@@ -33,7 +33,7 @@ jwt_access_token = None
 edited_text_dict = {}
 edited_text_buttons = {}
 user_messages = {}
-worker_data = None
+worker_data = {}
 img_file = None
 
 prodaja_check = False
@@ -122,7 +122,7 @@ def handle_contact(message):
             }
         response = requests.get(f'{API_URL}worker/{user_phone}', headers=headers)
         if response.status_code == 200:
-            worker_data = response.json()
+            worker_data[f'{user_id}'] = response.json()
             
             verification_code = ''.join(random.choice('0123456789') for i in range(6))
             verification_codes[user_id] = verification_code
@@ -146,7 +146,7 @@ def verify_user(message):
     user_id = message.from_user.id
     verification_code = message.text
     if verification_code == verification_codes[user_id]:
-        if user_id != worker_data['id_tg']:
+        if user_id != worker_data[f'{user_id}']['id_tg']:
                 data_update = {
                     'id_tg': user_id,
                 }
@@ -154,7 +154,7 @@ def verify_user(message):
                     headers = {
                         'Authorization': f'Bearer {jwt_access_token}',  # Include the JWT token in the Authorization header
                     }
-                    response = requests.get(f'{API_URL}worker/{worker_data["id"]}', headers=headers)
+                    response = requests.get(f'{API_URL}worker/{worker_data[f"{user_id}"]["id"]}', headers=headers)
                     if response.status_code == 200:
                         print("Access token is still usabel!")
                     else:
@@ -166,7 +166,7 @@ def verify_user(message):
                 headers = {
                         'Authorization': f'Bearer {jwt_access_token}',  # Include the JWT token in the Authorization header
                     }
-                response_update = requests.patch(f'{API_URL}worker/{worker_data["id"]}', data=data_update, headers=headers)
+                response_update = requests.patch(f'{API_URL}worker/{worker_data[f"{user_id}"]["id"]}', data=data_update, headers=headers)
                 if response_update.status_code == 200:
                     print('Successfully updated')
                 else:
@@ -247,12 +247,12 @@ def handle_photo(message):
 
     response = requests.get(f'{API_URL}worker/id/{user_id}', headers=headers)
     if response.status_code == 200:
-            worker_data = response.json()
+            worker_data[f'{user_id}'] = response.json()
     else:
         print(f"User does not exist with this {user_id} ID: {response.status_code}")
         worker_data = None
 
-    if worker_data and user_id == worker_data['id_tg']:
+    if worker_data[f'{user_id}'] and user_id == worker_data[f'{user_id}']['id_tg']:
 
         # Retrieve the user's current step from Redis
         user_step_bytes = redis_client.get(f'user_step:{user_id}')
@@ -449,7 +449,7 @@ def button_callback(call):
 
     response = requests.get(f'{API_URL}worker/id/{user_id}', headers=headers)
     if response.status_code == 200:
-            worker_data = response.json()
+            worker_data[f'{user_id}'] = response.json()
     else:
         print(f"Error getting token: {response.status_code}")
     
@@ -483,8 +483,8 @@ def button_callback(call):
             data = {
                 'check_num': check_num,
                 'sum': check_sum,
-                'worker': int(worker_data['id']),
-                'branch': int(worker_data['branch']),
+                'worker': int(worker_data[f'{user_id}']['id']),
+                'branch': int(worker_data[f'{user_id}']['branch']),
             }
             # Saving the data with API
             try:
@@ -506,7 +506,7 @@ def button_callback(call):
 
             response = requests.post(f'{API_URL}check/', data=data, files=files, headers=headers)
             if response.status_code == 201:
-                bot.send_message(chat_id, "Текст успешно отправлен и сохранен.")
+                bot.send_message(chat_id, "Чек успешно отправлен и сохранен.")
             elif response.status_code == 400:
                 bot.send_message(chat_id, "Этот чек уже отправлен.")
             else:
@@ -516,8 +516,8 @@ def button_callback(call):
             files = {'image': (f'{edited_text}.jpg', image_file)}
             data = {
                 'doc_num': edited_text,
-                'worker': int(worker_data['id']),
-                'branch': int(worker_data['branch']),
+                'worker': int(worker_data[f'{user_id}']['id']),
+                'branch': int(worker_data[f'{user_id}']['branch']),
             }
 
             try:
