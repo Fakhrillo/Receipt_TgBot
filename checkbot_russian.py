@@ -117,7 +117,7 @@ def handle_contact(message):
             }
         response = requests.get(f'{API_URL}worker/{user_phone}', headers=headers)
         if response.status_code == 200:
-            worker_data[f'{user_id}'] = response.json()
+            worker_data = response.json()
             
             verification_code = ''.join(random.choice('0123456789') for i in range(6))
             verification_codes[user_id] = verification_code
@@ -141,7 +141,7 @@ def verify_user(message):
     user_id = message.from_user.id
     verification_code = message.text
     if verification_code == verification_codes[user_id]:
-        if user_id != worker_data[f'{user_id}']['id_tg']:
+        if user_id != worker_data['id_tg']:
                 data_update = {
                     'id_tg': user_id,
                 }
@@ -149,7 +149,7 @@ def verify_user(message):
                     headers = {
                         'Authorization': f'Bearer {jwt_access_token}',  # Include the JWT token in the Authorization header
                     }
-                    response = requests.get(f'{API_URL}worker/{worker_data[f"{user_id}"]["id"]}', headers=headers)
+                    response = requests.get(f'{API_URL}worker/{worker_data["id"]}', headers=headers)
                     if response.status_code == 200:
                         print("Access token is still usabel!")
                     else:
@@ -161,7 +161,7 @@ def verify_user(message):
                 headers = {
                         'Authorization': f'Bearer {jwt_access_token}',  # Include the JWT token in the Authorization header
                     }
-                response_update = requests.patch(f'{API_URL}worker/{worker_data[f"{user_id}"]["id"]}', data=data_update, headers=headers)
+                response_update = requests.patch(f'{API_URL}worker/{worker_data["id"]}', data=data_update, headers=headers)
                 if response_update.status_code == 200:
                     print('Successfully updated')
                 else:
