@@ -122,9 +122,6 @@ def handle_contact(message):
             send_SMS(user_phone, verification_codes[user_id])
             tg_id_update = {'id_tg': user_id,}
             response_update = requests.patch(f'{API_URL}worker/{worker_data["id"]}', data=tg_id_update, headers=headers)
-            print(f"Response text: {response_update.text}")
-            print(f'Worker Data: {worker_data}')
-            print(f'DATA: {tg_id_update}, ID: {worker_data["id"]}')
 
             # User is allowed, proceed with the bot's functionality
             markup = telebot.types.ReplyKeyboardRemove(selective=False)
@@ -250,7 +247,11 @@ def handle_photo(message):
         print(f"User does not exist with this {user_id} ID: {response.status_code}")
         worker_data = None
 
-    if worker_data[f'{user_id}'] and user_id == worker_data[f'{user_id}']['id_tg']:
+    print(worker_data.get(f'{user_id}', None))
+    print(worker_data[f'{user_id}']['id_tg'])
+    print(user_id)
+
+    if worker_data.get(f'{user_id}', None) is not None and user_id == worker_data[f'{user_id}']['id_tg']:
 
         # Retrieve the user's current step from Redis
         user_step_bytes = redis_client.get(f'user_step:{user_id}')
