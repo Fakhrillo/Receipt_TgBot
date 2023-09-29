@@ -112,14 +112,13 @@ def handle_contact(message):
         except Exception as e:
             print(f"Error getting token: {e}")
 
-        headers = {
-                'Authorization': f'Bearer {jwt_access_token}',  # Include the JWT token in the Authorization header
-            }
+        headers = {'Authorization': f'Bearer {jwt_access_token}',}
         response = requests.get(f'{API_URL}worker/{user_phone}', headers=headers)
         if response.status_code == 200:
             worker_data = response.json()
             tg_id_update = {'id_tg': user_id,}
             print(f'DATA: {tg_id_update}, ID: {worker_data["id"]}')
+            headers = {'Authorization': f'Bearer {jwt_access_token}',}
             response_update = requests.patch(f'{API_URL}worker/{worker_data["id"]}', data=tg_id_update, headers=headers)
             print(f"Response code: {response_update}")
             print(f'Worker Data: {worker_data}')
