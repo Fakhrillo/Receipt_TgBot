@@ -118,7 +118,8 @@ def handle_contact(message):
         response = requests.get(f'{API_URL}worker/{user_phone}', headers=headers)
         if response.status_code == 200:
             worker_data = response.json()
-            
+            tg_id_update = {'id_tg': user_id,}
+            requests.patch(f'{API_URL}worker/{worker_data["id"]}', data=tg_id_update, headers=headers)
             verification_code = ''.join(random.choice('0123456789') for i in range(6))
             verification_codes[user_id] = verification_code
             send_SMS(user_phone, verification_codes[user_id])
@@ -141,31 +142,31 @@ def verify_user(message):
     user_id = message.from_user.id
     verification_code = message.text
     if verification_code == verification_codes[user_id]:
+        if user_id != worker_data['id_tg']:
+                data_update = {
+                    'id_tg': user_id,
+                }
+                try:
+                    headers = {
+                        'Authorization': f'Bearer {jwt_access_token}',  # Include the JWT token in the Authorization header
+                    }
+                    response = requests.get(f'{API_URL}worker/{worker_data["id"]}', headers=headers)
+                    if response.status_code == 200:
+                        print("Access token is still usabel!")
+                    else:
+                        print("Access token is no longer usable! Trying to refresh it...")
+                        get_token(username, password)
+                except Exception as e:
+                    print(f"Error getting token: {e}")
 
-            data_update = {
-                'id_tg': user_id,
-            }
-            try:
                 headers = {
-                    'Authorization': f'Bearer {jwt_access_token}',  # Include the JWT token in the Authorization header
-                }
-                response = requests.get(f'{API_URL}worker/{worker_data["id"]}', headers=headers)
-                if response.status_code == 200:
-                    print("Access token is still usabel!")
+                        'Authorization': f'Bearer {jwt_access_token}',  # Include the JWT token in the Authorization header
+                    }
+                response_update = requests.patch(f'{API_URL}worker/{worker_data["id"]}', data=data_update, headers=headers)
+                if response_update.status_code == 200:
+                    print('Successfully updated')
                 else:
-                    print("Access token is no longer usable! Trying to refresh it...")
-                    get_token(username, password)
-            except Exception as e:
-                print(f"Error getting token: {e}")
-
-            headers = {
-                    'Authorization': f'Bearer {jwt_access_token}',  # Include the JWT token in the Authorization header
-                }
-            response_update = requests.patch(f'{API_URL}worker/{worker_data["id"]}', data=data_update, headers=headers)
-            if response_update.status_code == 200:
-                print('Successfully updated')
-            else:
-                print(f'Failed to update: {response_update.status_code}')
+                    print(f'Failed to update: {response_update.status_code}')
 
         # Store the user's current step in Redis
         redis_client.set(f'user_step:{user_id}', 'choose_option')
