@@ -247,10 +247,6 @@ def handle_photo(message):
         print(f"User does not exist with this {user_id} ID: {response.status_code}")
         worker_data = None
 
-    print(worker_data.get(f'{user_id}', None))
-    print(worker_data[f'{user_id}']['id_tg'])
-    print(user_id)
-
     if worker_data.get(f'{user_id}', None) is not None and user_id == worker_data[f'{user_id}']['id_tg']:
 
         # Retrieve the user's current step from Redis
@@ -335,7 +331,7 @@ def handle_photo(message):
                         response_text = re.sub(r'ИС|МО', '№0', response_text)
                         response_text = re.sub(r'О', '0', response_text)
 
-                    prodaja_check = True
+                        prodaja_check = True
                 if summa_text is not None:
                     response_text += summa_text + "\n"
 
