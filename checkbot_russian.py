@@ -327,6 +327,8 @@ def handle_photo(message):
                     response_text += '\n'.join(prodazha_text) + "\n"
                     # Search for № sign if it's correct or no
                     match = re.search('№', response_text)
+                    print(f'Response Text: {response_text}')
+                    print(f'Match: {match}')
                     if not match:
                         response_text = re.sub(r'ИС|МО', '№0', response_text)
                         response_text = re.sub(r'О', '0', response_text)
