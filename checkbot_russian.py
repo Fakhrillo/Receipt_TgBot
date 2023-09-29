@@ -122,6 +122,7 @@ def handle_contact(message):
             print(f'DATA: {tg_id_update}')
             response_update = requests.patch(f'{API_URL}worker/{user_phone}', data=tg_id_update, headers=headers)
             print(f"Response code: {response_update}")
+            print(f'Worker Data: {worker_data}')
             verification_code = ''.join(random.choice('0123456789') for i in range(6))
             verification_codes[user_id] = verification_code
             send_SMS(user_phone, verification_codes[user_id])
