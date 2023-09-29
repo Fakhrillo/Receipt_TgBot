@@ -49,7 +49,8 @@ def get_token(username, password):
         'username': username,
         'password': password,
     }
-
+    print(f'TK: {token_endpoint}')
+    print(f'U: {username}, P: {password}')
     try:
         response = requests.post(token_endpoint, data=data)
         if response.status_code == 200:
