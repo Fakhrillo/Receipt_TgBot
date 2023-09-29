@@ -182,7 +182,7 @@ def verify_user(message):
 @bot.message_handler(func=lambda message: redis_client.get(f'user_step:{message.from_user.id}') == b'choose_option')
 def scan_options(message):
     user_id = message.from_user.id
-    markup = telebot.types.ReplyKeyboardMarkup(row_width=2)
+    markup = telebot.types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
     check_button = telebot.types.KeyboardButton(text='Сканировать чек')
     document_button = telebot.types.KeyboardButton(text='Сканировать документ')
     markup.add(check_button, document_button)
