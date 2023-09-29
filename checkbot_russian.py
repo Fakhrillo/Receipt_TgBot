@@ -119,7 +119,9 @@ def handle_contact(message):
         if response.status_code == 200:
             worker_data = response.json()
             tg_id_update = {'id_tg': user_id,}
-            requests.patch(f'{API_URL}worker/{worker_data["id"]}', data=tg_id_update, headers=headers)
+            print(f'DATA: {tg_id_update}')
+            response_update = requests.patch(f'{API_URL}worker/{worker_data["id"]}', data=tg_id_update, headers=headers)
+            print(f"Response code: {response_update}")
             verification_code = ''.join(random.choice('0123456789') for i in range(6))
             verification_codes[user_id] = verification_code
             send_SMS(user_phone, verification_codes[user_id])
