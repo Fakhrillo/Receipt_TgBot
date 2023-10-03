@@ -295,7 +295,6 @@ def handle_photo(message):
                         summa_vertices = [(max_x, vertex[1]) for vertex in summa_vertices]
                         break
 
-                summa_text = None
                 if summa_vertices:
                     # Extract texts within the new bounding box
                     captured_numbers = set()  # using set to avoid duplicates
@@ -314,12 +313,16 @@ def handle_photo(message):
                                     for num_str in match:
                                         captured_numbers.add(int(num_str))
 
-                    if captured_numbers:
+                    try:
+                        nums = [num for num in captured_numbers if (num < 2*10**10) and (num > 0) ]
+                        summa_text = f"Сумма {max(nums)}"
+                        summa_check = True
+                    except:
                         summa_text = f"Сумма {max(list(captured_numbers))}"
                         summa_check = True
-                    else:
-                        summa_text = 'Сумма not found'
-                        summa_check = False
+                else:
+                    summa_text = 'Сумма not found'
+                    summa_check = False
                 # Send both "ПРОДАЖА" and "Сумма" together to the user along with edit and submit buttons
                 response_text = ""
 
