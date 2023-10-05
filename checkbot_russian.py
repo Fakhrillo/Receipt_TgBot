@@ -30,7 +30,11 @@ redis_client = redis.StrictRedis(host='localhost', port=6379)
 # Define the JWT tokens
 jwt_access_token = None
 
+# Add a new user state to track edit mode
+user_edit_mode = {}
+
 edited_text_dict = {}
+edited_text_dict2 = {}
 edited_text_buttons = {}
 user_messages = {}
 worker_data = {}
@@ -38,6 +42,7 @@ worker_data = {}
 prodaja_check = False
 summa_check = False
 doc_check = False
+is_sub = 'true'
 
 verification_codes = {}
 list_of_checks = ['Сканировать чек', 'Сканировать документ']
@@ -190,7 +195,7 @@ def scan_options(message):
 def handle_option(message):
     global user_language
     user_id = message.from_user.id
-    listof = ['selection', 'send_check_photo', 'send_document_photo']
+    listof = ['selection', 'send_check_photo', 'send_document_photo', 'editing']
     # Retrieve the user's current step from Redis
     user_step_bytes = redis_client.get(f'user_step:{user_id}')
     user_step_str = user_step_bytes.decode('utf-8')
@@ -323,6 +328,8 @@ def handle_photo(message):
                 else:
                     summa_text = 'Сумма not found'
                     summa_check = False
+
+
                 # Send both "ПРОДАЖА" and "Сумма" together to the user along with edit and submit buttons
                 response_text = ""
 
@@ -391,26 +398,32 @@ def handle_photo(message):
 # Send extracted text with edit and submit buttons
 def send_text_with_buttons(chat_id, extracted_text):
     
-    markup = telebot.types.InlineKeyboardMarkup()
-    edit_button = telebot.types.InlineKeyboardButton(text="Ресканировать", callback_data="edit")
+    markup = telebot.types.InlineKeyboardMarkup(row_width=2)
+    rescan = telebot.types.InlineKeyboardButton(text="Ресканировать", callback_data="rescan")
     if summa_check and prodaja_check or doc_check:
-        print(f'FCH: {prodaja_check}, SM: {summa_check}, DCH: {doc_check}')
         submit_button = telebot.types.InlineKeyboardButton(text='Подтвердить', callback_data="submit")
-        markup.add(edit_button, submit_button)
+        edit_button = telebot.types.InlineKeyboardButton(text='Редактировать', callback_data='edit')
+        markup.add(rescan, submit_button, edit_button)
     else:
-        markup.add(edit_button)
+        markup.add(rescan)
 
     edited_text_buttons[chat_id] = extracted_text
     if extracted_text:
-        sent_message = bot.send_message(chat_id, extracted_text, reply_markup=markup)
-        # Store the message ID in the user_messages dictionary
-        user_messages[chat_id] = sent_message.message_id
+        if is_sub == 'false':
+            sent_message = bot.send_message(chat_id, f'Измененный текст:\n{extracted_text}', reply_markup=markup)
+            # Store the message ID in the user_messages dictionary
+            user_messages[chat_id] = sent_message.message_id
+        else:
+            sent_message = bot.send_message(chat_id, extracted_text, reply_markup=markup)
+            # Store the message ID in the user_messages dictionary
+            user_messages[chat_id] = sent_message.message_id
     else:
         bot.send_message(chat_id, "Текст в документе не найден.")
 
 #Handle the errors
 @bot.message_handler(func=lambda message: True)
-def error(message):
+def error_edit(message):
+    global is_sub
     user_id = message.from_user.id
     user_step_bytes = redis_client.get(f'user_step:{user_id}')
     user_step_str = user_step_bytes.decode('utf-8')
@@ -420,11 +433,25 @@ def error(message):
         bot.send_message(user_id, 'Пожалуйста, выберите опцию для дальнейшей обработки.')
     elif user_step_str in ['send_check_photo', 'send_document_photo']:
         bot.send_message(user_id, 'Пожалуйста, отправьте новое фото чека или документ.')
+    elif user_step_str == 'editing':
+        edited_text = message.text.strip()
+        # Get the previous extracted text from Redis
+        previous_extracted_text = edited_text_dict2.get(user_id, {}).get('text', '')
+
+        # Replace the previous extracted text with the edited text
+        edited_text_dict2[user_id]['text'] = edited_text
+        pv_step = edited_text_dict2[user_id]['previous_step']
+        # Remove the user from edit mode
+        redis_client.set(f'user_step:{user_id}', pv_step)
+        is_sub = 'false'
+
+        # Proceed with further processing, e.g., sending the edited text for verification
+        send_text_with_buttons(user_id, edited_text)
 
 # Handle the rescan and submit buttons
 @bot.callback_query_handler(func=lambda call: True)
 def button_callback(call):
-    global image_file, worker_data
+    global image_file, worker_data, is_sub
     user_id = call.from_user.id
     chat_id = call.message.chat.id
         
@@ -452,7 +479,7 @@ def button_callback(call):
     else:
         print(f"Error getting token: {response.status_code}")
     
-    if call.data == "edit":
+    if call.data == "rescan":
         redis_client.set(f'user_step:{user_id}', edited_text_dict[user_id]['step'])
         user_step_bytes = redis_client.get(f'user_step:{user_id}')
         user_step_str = user_step_bytes.decode('utf-8')
@@ -463,6 +490,23 @@ def button_callback(call):
             bot.send_message(user_id, "Пожалуйста, отправьте новое фото документа.")
             bot.delete_message(chat_id, call.message.message_id)  # Remove the edit/submit buttons message
         edited_text_dict.pop(user_id, None)
+
+    elif call.data == "edit":
+        user_step_bytes = redis_client.get(f'user_step:{user_id}')
+        user_step_str = user_step_bytes.decode('utf-8')
+        # Set the user's state to "editing"
+        redis_client.set(f'user_step:{user_id}', 'editing')
+
+        # Get the previous extracted text
+        previous_extracted_text = edited_text_buttons.get(chat_id, '')
+        
+        # Send a message asking the user to enter their edited text
+        bot.send_message(user_id, f"`{previous_extracted_text}`\nПожалуйста введите измененный текст:", parse_mode='Markdown')
+
+        bot.delete_message(chat_id, call.message.message_id)  # Remove the edit/submit buttons message
+
+        # Store the previous extracted text in the Redis state
+        edited_text_dict2[user_id] = {'step': 'editing', 'text': previous_extracted_text, 'previous_step': user_step_str}
 
     elif call.data == "submit":
         chat_id = call.message.chat.id
@@ -484,6 +528,7 @@ def button_callback(call):
                 'sum': check_sum,
                 'worker': int(worker_data[f'{user_id}']['id']),
                 'branch': int(worker_data[f'{user_id}']['branch']),
+                'issubmitted': is_sub,
             }
             # Saving the data with API
             try:
@@ -505,11 +550,15 @@ def button_callback(call):
 
             response = requests.post(f'{API_URL}check/', data=data, files=files, headers=headers)
             if response.status_code == 201:
-                bot.send_message(chat_id, "Чек успешно отправлен и сохранен.")
+                if is_sub == 'false':
+                    bot.send_message(chat_id, 'Чек успешно отправлен. Ожидайте подтверждения администратора.')
+                else: 
+                    bot.send_message(chat_id, "Чек успешно отправлен и сохранен.")
+                is_sub = 'true'
             elif response.status_code == 400:
                 bot.send_message(chat_id, "Этот чек уже отправлен.")
             else:
-                bot.send_message(chat_id, "Не удалось отправить текст на сервер. Пожалуйста, повторите попытку позже.")
+                bot.send_message(chat_id, "Не удалось отправить чек на сервер. Пожалуйста, повторите попытку позже.")
 
         elif user_step_str == 'send_document_photo':
             files = {'image': (f'{edited_text}.jpg', image_file)}
@@ -517,6 +566,7 @@ def button_callback(call):
                 'doc_num': edited_text,
                 'worker': int(worker_data[f'{user_id}']['id']),
                 'branch': int(worker_data[f'{user_id}']['branch']),
+                'issubmitted': is_sub,
             }
 
             try:
@@ -539,11 +589,15 @@ def button_callback(call):
             # Saving the data with API
             response = requests.post(f'{API_URL}doc/', data=data, files=files, headers=headers)
             if response.status_code == 201:
-                bot.send_message(chat_id, "Текст успешно отправлен и сохранен.")
+                if is_sub == 'false':
+                    bot.send_message(chat_id, 'Документ успешно отправлен. Ожидайте подтверждения администратора.')
+                else:
+                    bot.send_message(chat_id, "Документ успешно отправлен и сохранен.")
+                is_sub = 'true'
             elif response.status_code == 400:
                 bot.send_message(chat_id, "Этот документ уже отправлен.")
             else:
-                bot.send_message(chat_id, "Не удалось отправить текст на сервер. Пожалуйста, повторите попытку позже.")
+                bot.send_message(chat_id, "Не удалось отправить документ на сервер. Пожалуйста, повторите попытку позже.")
         
         bot.delete_message(chat_id, call.message.message_id)  # Remove the edit/submit buttons message
 
