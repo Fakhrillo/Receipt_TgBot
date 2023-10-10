@@ -383,6 +383,7 @@ def handle_photo(message):
                 if response_text:
                     doc_check = True
                     result_string = re.sub(r'\s', '', response_text)
+                    result_string = result_string[:12]
                     send_text_with_buttons(user_id, result_string.strip())
                 else:
                     bot.send_message(user_id, 'Соответствующих строк не обнаружено.')
