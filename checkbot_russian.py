@@ -585,7 +585,7 @@ def button_callback(call):
             headers = {
                     'Authorization': f'Bearer {jwt_access_token}',  # Include the JWT token in the Authorization header
                 }
-
+            print(data, image_file)
             # Saving the data with API
             response = requests.post(f'{API_URL}doc/', data=data, files=files, headers=headers)
             if response.status_code == 201:
