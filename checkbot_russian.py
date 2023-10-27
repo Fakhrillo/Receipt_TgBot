@@ -338,8 +338,8 @@ def handle_photo(message):
                     # Search for № sign if it's correct or no
                     match = re.search('№', response_text)
                     if not match:
-                        response_text = re.sub(r'ИС|МО', '№0', response_text)
-                        response_text = re.sub(r'О', '0', response_text)
+                        response_text = re.sub(r'ИС|МО|NC|МC|KC|MC', '№0', response_text)
+                        response_text = re.sub(r'О|C', '0', response_text)
                         response_text = re.sub(r'N', '№', response_text)
 
                     prodaja_check = True
