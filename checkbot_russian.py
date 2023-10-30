@@ -340,7 +340,7 @@ def handle_photo(message):
                     if not match:
                         response_text = re.sub(r'ИС|МО|NC|KC|МС', '№0', response_text)
                         response_text = re.sub(r'О|C', '0', response_text)
-                        response_text = re.sub(r'N', '№', response_text)
+                        response_text = re.sub(r'N|М', '№', response_text)
 
                     prodaja_check = True
                 if summa_text is not None:
