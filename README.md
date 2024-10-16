@@ -62,5 +62,11 @@ Once the bot is running, users can interact with it through Telegram to:
 - Scan Receipts: Upload an image of a receipt, and the bot will extract and return the text.
 - Scan Documents: Similarly, users can upload documents for text extraction.
 
+
+# Live Preview
+
+![screenshot](media/image_2024-10-16_06-22-06.png)
+![screenshot](media/image_2024-10-16_06-23-15.png)
+
 ## License
 This project is licensed under the MIT License. See the LICENSE file for details.
